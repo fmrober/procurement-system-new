@@ -1,0 +1,1 @@
+DESCRIBE procurement_file;

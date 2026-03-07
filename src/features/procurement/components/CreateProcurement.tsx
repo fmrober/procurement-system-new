@@ -90,6 +90,19 @@ const CreateProcurement: React.FC = () => {
       setUploadingSingleSource(false);
     }
   };
+
+  const uploadBackgroundFiles = async (): Promise<FileUploadResponse[]> => {
+    if (selectedFiles.length === 0) return [];
+    
+    try {
+      const uploadPromises = selectedFiles.map(file => uploadFile(file));
+      const results = await Promise.all(uploadPromises);
+      return results;
+    } catch (error) {
+      console.error('Failed to upload background files', error);
+      throw error;
+    }
+  };
   
   // Parse query params to check for edit mode
   useEffect(() => {
@@ -140,9 +153,19 @@ const CreateProcurement: React.FC = () => {
                 setSelectedSupplierIds(data.supplierIds);
             }
             
-            // Handle Files
-            if (data.files) {
-                setExistingFiles(data.files);
+            // Handle Background Files
+            if (data.backgroundFiles) {
+                setExistingFiles(data.backgroundFiles);
+            }
+            
+            // Handle Single Source Files
+            if (data.singleSourceFiles) {
+                setUploadedSingleSourceFiles(data.singleSourceFiles.map(f => ({
+                    fileName: f.fileName,
+                    fileSize: f.fileSize,
+                    filePath: f.filePath,
+                    uploadTime: f.uploadTime || ''
+                })));
             }
         }
     } catch (error) {
@@ -300,10 +323,21 @@ const CreateProcurement: React.FC = () => {
 
     try {
       let singleSourceFileList: { fileName: string; fileSize: number; filePath: string; uploadTime: string }[] = [];
+      let backgroundFileList: { fileName: string; fileSize: number; filePath: string; uploadTime: string }[] = [];
       
       if (supplierType === 'single' && singleSourceFiles.length > 0) {
         const uploadedFiles = await uploadSingleSourceFiles();
         singleSourceFileList = uploadedFiles.map(f => ({
+          fileName: f.fileName,
+          fileSize: f.fileSize,
+          filePath: f.filePath,
+          uploadTime: f.uploadTime
+        }));
+      }
+
+      if (selectedFiles.length > 0) {
+        const uploadedBgFiles = await uploadBackgroundFiles();
+        backgroundFileList = uploadedBgFiles.map(f => ({
           fileName: f.fileName,
           fileSize: f.fileSize,
           filePath: f.filePath,
@@ -332,6 +366,7 @@ const CreateProcurement: React.FC = () => {
         preApplicationId: selectedPreApp?.preApplicationId,
         supplierIds: selectedSupplierIds,
         procurementRequestId: editingId || undefined,
+        backgroundFiles: backgroundFileList,
         singleSourceFiles: singleSourceFileList
       };
       await createProcurementRequest(payload);
@@ -381,15 +416,21 @@ const CreateProcurement: React.FC = () => {
             preApplicationId: selectedPreApp?.preApplicationId,
             supplierIds: selectedSupplierIds,
             procurementRequestId: editingId || undefined,
-            files: [
+            backgroundFiles: [
                 ...existingFiles,
                 ...selectedFiles.map(f => ({
                     fileName: f.name,
                     fileSize: f.size,
-                    filePath: `/uploads/${f.name}`, // Mock path
+                    filePath: `/uploads/${f.name}`,
                     uploadTime: new Date().toISOString()
                 }))
-            ]
+            ],
+            singleSourceFiles: uploadedSingleSourceFiles.map(f => ({
+                fileName: f.fileName,
+                fileSize: f.fileSize,
+                filePath: f.filePath,
+                uploadTime: f.uploadTime
+            }))
         };
         await createProcurementRequest(payload);
         alert('草稿已保存！');

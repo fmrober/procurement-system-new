@@ -32,7 +32,8 @@ const ProcurementDetail: React.FC = () => {
   const [selectedPreApp, setSelectedPreApp] = useState<PreApplication | null>(null);
   const [selectedSupplierIds, setSelectedSupplierIds] = useState<number[]>([]);
   const [processTasks, setProcessTasks] = useState<ProcessTask[]>([]);
-  const [files, setFiles] = useState<{fileId: number, fileName: string, fileSize: number, uploadTime: string, filePath: string}[]>([]);
+  const [backgroundFiles, setBackgroundFiles] = useState<{fileId: number, fileName: string, fileSize: number, uploadTime: string, filePath: string}[]>([]);
+  const [singleSourceFiles, setSingleSourceFiles] = useState<{fileId: number, fileName: string, fileSize: number, uploadTime: string, filePath: string}[]>([]);
   
   // Form States
   const [department, setDepartment] = useState('');
@@ -82,8 +83,18 @@ const ProcurementDetail: React.FC = () => {
                     setProcessTasks(detail.processTasks);
                 }
                 
+                if (detail.backgroundFiles) {
+                    setBackgroundFiles(detail.backgroundFiles.map(f => ({
+                        fileId: f.fileId || 0,
+                        fileName: f.fileName,
+                        fileSize: f.fileSize,
+                        uploadTime: f.uploadTime || '',
+                        filePath: f.filePath
+                    })));
+                }
+                
                 if (detail.singleSourceFiles) {
-                    setFiles(detail.singleSourceFiles.map(f => ({
+                    setSingleSourceFiles(detail.singleSourceFiles.map(f => ({
                         fileId: f.fileId || 0,
                         fileName: f.fileName,
                         fileSize: f.fileSize,
@@ -203,7 +214,7 @@ const ProcurementDetail: React.FC = () => {
           <div className="mt-4 border-t border-gray-200 pt-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">附件列表</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {files.length > 0 ? files.map(file => (
+              {backgroundFiles.length > 0 ? backgroundFiles.map(file => (
                 <div key={file.fileId} className="flex items-center p-3 border border-gray-200 rounded-lg bg-gray-50">
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                     <File className="w-5 h-5 text-blue-600" />
@@ -414,11 +425,11 @@ const ProcurementDetail: React.FC = () => {
                 disabled
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-600"></textarea>
               
-              {files.length > 0 && (
+              {singleSourceFiles.length > 0 && (
                 <div className="mt-4 border-t border-gray-200 pt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">单一来源附件</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {files.map(file => (
+                    {singleSourceFiles.map(file => (
                       <div key={file.fileId} className="flex items-center p-3 border border-gray-200 rounded-lg bg-gray-50">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                           <File className="w-5 h-5 text-blue-600" />
