@@ -86,13 +86,14 @@ export interface ProcurementRequest {
   amount: number;
   currency: string;
   items?: ProcurementRequestItem[];
-  files?: ProcurementFile[]; // Added
+  backgroundFiles?: ProcurementFile[];
+  singleSourceFiles?: ProcurementFile[];
+  files?: ProcurementFile[];
   backgroundDesc: string;
   supplierSelectionType: string;
   singleSourceReason?: string;
   supplierIds: number[];
   processTasks?: ProcessTask[];
-  // Added fields to match backend and frontend usage
   status?: string; 
   title?: string;
   supplierCount?: number;
@@ -109,7 +110,7 @@ export interface ProcurementRequest {
   updateTime?: string;
   updateUserId?: number;
   updateUserName?: string;
-  supplierList?: Supplier[]; // Added for detail view
+  supplierList?: Supplier[];
 }
 
 export interface ProcurementStats {
@@ -308,4 +309,25 @@ export const getSupplierHistory = async (id: number) => {
 
 export const createSupplierUser = async (supplierId: number, userData: { username: string; realName: string; }) => {
   return request.post<any, any>(`/api/supplier/${supplierId}/create-user`, userData);
+};
+
+export interface FileUploadResponse {
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  uploadTime: string;
+}
+
+export const uploadFile = async (file: File): Promise<FileUploadResponse> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request.post<any, FileUploadResponse>('/api/files/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+export const getFileDownloadUrl = (filePath: string): string => {
+  return `/api/files/download/${filePath}`;
 };

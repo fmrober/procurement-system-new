@@ -1,0 +1,1 @@
+ALTER TABLE procurement_file ADD COLUMN file_type VARCHAR(50) DEFAULT 'BACKGROUND';

@@ -10,6 +10,7 @@ import {
   getPreApplications, 
   getSuppliers, 
   getProcurementById,
+  getFileDownloadUrl,
   PreApplication,
   Supplier,
   ProcurementRequest,
@@ -81,8 +82,8 @@ const ProcurementDetail: React.FC = () => {
                     setProcessTasks(detail.processTasks);
                 }
                 
-                if (detail.files) {
-                    setFiles(detail.files.map(f => ({
+                if (detail.singleSourceFiles) {
+                    setFiles(detail.singleSourceFiles.map(f => ({
                         fileId: f.fileId || 0,
                         fileName: f.fileName,
                         fileSize: f.fileSize,
@@ -110,17 +111,13 @@ const ProcurementDetail: React.FC = () => {
   };
 
   const handleDownload = (file: { fileName: string, filePath: string }) => {
-     // Check if it's a real URL or a mock path
-     if (file.filePath && (file.filePath.startsWith('http') || file.filePath.startsWith('blob:'))) {
-        const link = document.createElement('a');
-        link.href = file.filePath;
-        link.download = file.fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } else {
-        alert(`下载功能演示：\n文件名：${file.fileName}\n文件路径：${file.filePath}\n\n在实际环境中，这将触发文件下载。`);
-    }
+    const downloadUrl = getFileDownloadUrl(file.filePath);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = file.fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -416,6 +413,34 @@ const ProcurementDetail: React.FC = () => {
                 value={singleSourceReason}
                 disabled
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-600"></textarea>
+              
+              {files.length > 0 && (
+                <div className="mt-4 border-t border-gray-200 pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">单一来源附件</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {files.map(file => (
+                      <div key={file.fileId} className="flex items-center p-3 border border-gray-200 rounded-lg bg-gray-50">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                          <File className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{file.fileName}</p>
+                          <p className="text-xs text-gray-500">{(file.fileSize / 1024).toFixed(1)} KB • {file.uploadTime ? new Date(file.uploadTime).toLocaleDateString() : '-'}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={() => handleDownload(file)}
+                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                            title="下载"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 package com.example.procurement.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -10,5 +11,8 @@ public class ProcurementFile {
     private String fileName;
     private Long fileSize;
     private String filePath;
+    private String fileType;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime uploadTime;
 }

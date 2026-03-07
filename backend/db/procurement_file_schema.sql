@@ -4,6 +4,10 @@ CREATE TABLE IF NOT EXISTS procurement_file (
     file_name VARCHAR(255) NOT NULL,
     file_size BIGINT NOT NULL,
     file_path VARCHAR(500) NOT NULL,
+    file_type VARCHAR(50) DEFAULT 'BACKGROUND',
     upload_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_proc_req (procurement_request_id)
+    INDEX idx_proc_req (procurement_request_id),
+    INDEX idx_file_type (file_type)
 );
+
+ALTER TABLE procurement_file ADD COLUMN IF NOT EXISTS file_type VARCHAR(50) DEFAULT 'BACKGROUND';

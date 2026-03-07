@@ -192,16 +192,44 @@ public class ProcurementService {
         }
 
         // Save Files
-        if (request.getFiles() != null) {
-            for (com.example.procurement.entity.ProcurementFile file : request.getFiles()) {
-                file.setProcurementRequestId(request.getProcurementRequestId());
-                procurementFileMapper.insert(file);
-            }
-        }
+        saveFiles(request);
         
         // Start Process only if not DRAFT
         if (!"DRAFT".equals(request.getStatus())) {
             startProcess(request);
+        }
+    }
+    
+    private void saveFiles(ProcurementRequest request) {
+        Long requestId = request.getProcurementRequestId();
+        
+        // Save Background Files
+        if (request.getBackgroundFiles() != null) {
+            for (com.example.procurement.entity.ProcurementFile file : request.getBackgroundFiles()) {
+                file.setProcurementRequestId(requestId);
+                file.setFileType("BACKGROUND");
+                procurementFileMapper.insert(file);
+            }
+        }
+        
+        // Save Single Source Files
+        if (request.getSingleSourceFiles() != null) {
+            for (com.example.procurement.entity.ProcurementFile file : request.getSingleSourceFiles()) {
+                file.setProcurementRequestId(requestId);
+                file.setFileType("SINGLE_SOURCE");
+                procurementFileMapper.insert(file);
+            }
+        }
+        
+        // Backward compatibility: handle files field
+        if (request.getFiles() != null && request.getBackgroundFiles() == null && request.getSingleSourceFiles() == null) {
+            for (com.example.procurement.entity.ProcurementFile file : request.getFiles()) {
+                file.setProcurementRequestId(requestId);
+                if (file.getFileType() == null) {
+                    file.setFileType("SINGLE_SOURCE");
+                }
+                procurementFileMapper.insert(file);
+            }
         }
     }
     
@@ -233,12 +261,7 @@ public class ProcurementService {
         }
 
         // Save Files
-        if (request.getFiles() != null) {
-            for (com.example.procurement.entity.ProcurementFile file : request.getFiles()) {
-                file.setProcurementRequestId(request.getProcurementRequestId());
-                procurementFileMapper.insert(file);
-            }
-        }
+        saveFiles(request);
         
         // Start Process if status changed from DRAFT to APPROVING (or other non-draft status)
         if (!"DRAFT".equals(request.getStatus())) {
@@ -326,8 +349,14 @@ public class ProcurementService {
             List<ProcurementRequestItem> items = procurementRequestItemMapper.findByRequestId(id);
             request.setItems(items);
 
-            List<com.example.procurement.entity.ProcurementFile> files = procurementFileMapper.findByRequestId(id);
-            request.setFiles(files);
+            // Load files by type
+            List<com.example.procurement.entity.ProcurementFile> backgroundFiles = procurementFileMapper.findByRequestIdAndType(id, "BACKGROUND");
+            List<com.example.procurement.entity.ProcurementFile> singleSourceFiles = procurementFileMapper.findByRequestIdAndType(id, "SINGLE_SOURCE");
+            request.setBackgroundFiles(backgroundFiles);
+            request.setSingleSourceFiles(singleSourceFiles);
+            
+            // For backward compatibility, also set files to singleSourceFiles
+            request.setFiles(singleSourceFiles);
             
             // Populate Process Tasks
             ProcessInstance instance = processMapper.findInstanceByBusinessKey(request.getRequestCode());

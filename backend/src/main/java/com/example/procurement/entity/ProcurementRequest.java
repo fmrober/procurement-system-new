@@ -36,7 +36,9 @@ public class ProcurementRequest {
     private List<Long> supplierIds; 
     private List<Supplier> supplierList; // Added for detail view
     private List<ProcurementRequestItem> items;
-    private List<ProcurementFile> files; // Added for file attachments
+    private List<ProcurementFile> backgroundFiles; // 采购背景附件
+    private List<ProcurementFile> singleSourceFiles; // 单一来源附件
+    private List<ProcurementFile> files; // Deprecated: kept for backward compatibility
     private List<ProcessTask> processTasks; // Added for process flow display
     
     private LocalDateTime createTime;

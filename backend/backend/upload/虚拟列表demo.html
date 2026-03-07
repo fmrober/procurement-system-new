@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fixed Virtual List</title>
+  <style>
+    .container {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      position: relative;
+    }
+    .list-item {
+      position: absolute;
+      width: 100%;
+      height: 50px;
+      line-height: 50px;
+      border-bottom: 1px solid #eee;
+      padding-left: 20px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="list-container"></div>
+
+  <script>
+    // 生成测试数据（1万条）
+    const data = Array.from({length: 1000}, (_, i) => ({
+      id: i,
+      text: `Item ${i + 1}`
+    }));
+
+    class VirtualList {
+      constructor(container, data) {
+        this.container = container;
+        this.data = data;
+        this.itemHeight = 50;
+        this.bufferSize = 15; // 增大缓冲区
+        this.visibleCount = Math.ceil(400 / 50);
+        this.observer = new IntersectionObserver(
+          this.handleIntersect.bind(this),
+          {
+            root: this.container,
+            threshold: 0.01, // 降低触发阈值
+            rootMargin: "100px 0px" // 扩展检测边界
+          }
+        );
+        this.init();
+      }
+
+      init() {
+        // 创建占位容器
+        this.listContainer = document.createElement('div');
+        this.listContainer.style.height = `${this.data.length * this.itemHeight}px`;
+        this.container.appendChild(this.listContainer);
+        
+        // 初始渲染
+        this.renderWindow(0);
+      }
+
+      renderWindow(startIndex) {
+        // 计算渲染范围（带缓冲区）
+        const endIndex = Math.min(
+          startIndex + this.visibleCount + this.bufferSize * 2,
+          this.data.length
+        );
+        startIndex = Math.max(0, startIndex - this.bufferSize);
+
+        // 清除现有观察
+        this.observer.disconnect();
+
+        // 渲染可视项
+        this.listContainer.innerHTML = '';
+        for (let i = startIndex; i < endIndex; i++) {
+          const item = document.createElement('div');
+          item.className = 'list-item';
+          item.style.top = `${i * this.itemHeight}px`;
+          item.dataset.index = i;
+          item.textContent = this.data[i].text;
+          this.listContainer.appendChild(item);
+          this.observer.observe(item);
+        }
+      }
+
+      handleIntersect(entries) {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const index = parseInt(entry.target.dataset.index);
+            const middleIndex = index - Math.floor(this.visibleCount / 2);
+            this.renderWindow(middleIndex);
+          }
+        });
+      }
+    }
+
+    // 初始化虚拟列表
+    new VirtualList(
+      document.getElementById('list-container'),
+      data
+    );
+  </script>
+</body>
+</html>

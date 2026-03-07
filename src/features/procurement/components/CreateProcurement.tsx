@@ -14,7 +14,9 @@ import {
   getSuppliers,
   getProcurementById,
   PreApplication,
-  Supplier
+  Supplier,
+  uploadFile,
+  FileUploadResponse
 } from '../../../api/procurement';
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 
@@ -33,6 +35,12 @@ const CreateProcurement: React.FC = () => {
   const [existingFiles, setExistingFiles] = useState<{fileId?: number, fileName: string, fileSize: number, filePath: string, uploadTime?: string}[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Single Source File Upload State
+  const [singleSourceFiles, setSingleSourceFiles] = useState<File[]>([]);
+  const [uploadedSingleSourceFiles, setUploadedSingleSourceFiles] = useState<FileUploadResponse[]>([]);
+  const [uploadingSingleSource, setUploadingSingleSource] = useState(false);
+  const singleSourceFileInputRef = React.useRef<HTMLInputElement>(null);
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const newFiles = Array.from(event.target.files);
@@ -48,6 +56,39 @@ const CreateProcurement: React.FC = () => {
 
   const removeExistingFile = (fileId: number) => {
     setExistingFiles(prev => prev.filter(f => f.fileId !== fileId));
+  };
+
+  const handleSingleSourceFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const newFiles = Array.from(event.target.files);
+      const totalFiles = singleSourceFiles.length + newFiles.length;
+      if (totalFiles > 3) {
+        alert('单一来源附件最多只能上传3个文件');
+        return;
+      }
+      setSingleSourceFiles(prev => [...prev, ...newFiles]);
+    }
+    if (event.target.value) event.target.value = '';
+  };
+
+  const removeSingleSourceFile = (index: number) => {
+    setSingleSourceFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadSingleSourceFiles = async (): Promise<FileUploadResponse[]> => {
+    if (singleSourceFiles.length === 0) return [];
+    
+    setUploadingSingleSource(true);
+    try {
+      const uploadPromises = singleSourceFiles.map(file => uploadFile(file));
+      const results = await Promise.all(uploadPromises);
+      return results;
+    } catch (error) {
+      console.error('Failed to upload single source files', error);
+      throw error;
+    } finally {
+      setUploadingSingleSource(false);
+    }
   };
   
   // Parse query params to check for edit mode
@@ -258,6 +299,18 @@ const CreateProcurement: React.FC = () => {
     }
 
     try {
+      let singleSourceFileList: { fileName: string; fileSize: number; filePath: string; uploadTime: string }[] = [];
+      
+      if (supplierType === 'single' && singleSourceFiles.length > 0) {
+        const uploadedFiles = await uploadSingleSourceFiles();
+        singleSourceFileList = uploadedFiles.map(f => ({
+          fileName: f.fileName,
+          fileSize: f.fileSize,
+          filePath: f.filePath,
+          uploadTime: f.uploadTime
+        }));
+      }
+
       const payload = {
         department,
         applicantName: '张明',
@@ -278,7 +331,8 @@ const CreateProcurement: React.FC = () => {
         singleSourceReason: supplierType === 'single' ? singleSourceReason : undefined,
         preApplicationId: selectedPreApp?.preApplicationId,
         supplierIds: selectedSupplierIds,
-        procurementRequestId: editingId || undefined
+        procurementRequestId: editingId || undefined,
+        singleSourceFiles: singleSourceFileList
       };
       await createProcurementRequest(payload);
       alert('采购申请已提交！');
@@ -846,6 +900,68 @@ const CreateProcurement: React.FC = () => {
                 <Info className="mr-1 w-3 h-3" />
                 单一来源采购需要提供充分的理由说明，并需要额外的审批流程
               </p>
+
+              <div className="mt-6 border-t border-gray-200 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <label className="block text-sm font-medium text-gray-700">单一来源附件</label>
+                    <span className="text-xs text-gray-500 ml-2">(最多3个文件，非必填)</span>
+                  </div>
+                  <span className="text-xs text-gray-500">{singleSourceFiles.length}/3</span>
+                </div>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                  <input 
+                    type="file" 
+                    multiple 
+                    onChange={handleSingleSourceFileSelect}
+                    className="hidden" 
+                    ref={singleSourceFileInputRef}
+                    disabled={singleSourceFiles.length >= 3 || uploadingSingleSource}
+                  />
+                  
+                  {singleSourceFiles.length < 3 && (
+                    <div 
+                      className={`flex flex-col items-center justify-center cursor-pointer ${uploadingSingleSource ? 'opacity-50' : ''}`}
+                      onClick={() => !uploadingSingleSource && singleSourceFileInputRef.current?.click()}
+                    >
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2 hover:bg-blue-200 transition-colors">
+                        <Plus className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <p className="text-sm text-gray-600 font-medium">
+                        {uploadingSingleSource ? '上传中...' : '点击上传文件'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">支持常见文档、图片格式</p>
+                    </div>
+                  )}
+                  
+                  {singleSourceFiles.length > 0 && (
+                    <div className="mt-4 space-y-2 border-t border-gray-200 pt-3">
+                      {singleSourceFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200">
+                          <div className="flex items-center overflow-hidden">
+                            <FileText className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                            <span className="text-xs text-gray-400 ml-2 flex-shrink-0">({(file.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); removeSingleSourceFile(index); }}
+                            className="text-gray-400 hover:text-red-500 p-1"
+                            disabled={uploadingSingleSource}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <p className="text-xs text-gray-500 mt-2 flex items-center">
+                  <Lightbulb className="w-3 h-3 mr-1" />
+                  提示：可上传单一来源采购的相关证明材料
+                </p>
+              </div>
             </div>
           )}
 
